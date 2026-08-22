@@ -5,6 +5,8 @@ import Signup from "./pages/Signup";
 import EmployeeDashboard from "./pages/employee/EmployeeDashboard";
 import Attendance from "./pages/employee/Attendance";
 import Leave from "./pages/employee/Leave";
+import Payroll from "./pages/employee/Payroll";
+import Profile from "./pages/employee/Profile";
 
 
 function App() {
@@ -26,6 +28,11 @@ function App() {
   element={<Attendance />}
   />
         <Route path="/employee/leave" element={<Leave />} />
+        <Route path="/employee/payroll" element={<Payroll />} />
+        <Route
+  path="/employee/profile"
+  element={<Profile />}
+/>
 
       </Routes>
     </BrowserRouter>
