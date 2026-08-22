@@ -1,12 +1,11 @@
 from datetime import date
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from ..database.connection import get_db
-from ..database.models import Employee, Leave
+from ..database.models import LeaveRequest, Employee
 
 
 router = APIRouter(
@@ -15,27 +14,27 @@ router = APIRouter(
 )
 
 
-class LeaveRequest(BaseModel):
+class LeaveCreate(BaseModel):
     employee_id: int
     leave_type: str
     start_date: date
     end_date: date
-    remarks: Optional[str] = None
+    remarks: str | None = None
 
 
-class LeaveDecision(BaseModel):
+class LeaveStatusUpdate(BaseModel):
     status: str
-    admin_comment: Optional[str] = None
+    admin_comment: str | None = None
+    approved_by: int | None = None
 
 
 @router.post("/")
-def apply_leave(
-    data: LeaveRequest,
+def create_leave_request(
+    leave_data: LeaveCreate,
     db: Session = Depends(get_db)
 ):
-    # Check employee exists
     employee = db.query(Employee).filter(
-        Employee.id == data.employee_id
+        Employee.id == leave_data.employee_id
     ).first()
 
     if not employee:
@@ -44,33 +43,18 @@ def apply_leave(
             detail="Employee not found"
         )
 
-    # Validate dates
-    if data.start_date > data.end_date:
+    if leave_data.end_date < leave_data.start_date:
         raise HTTPException(
             status_code=400,
-            detail="Start date cannot be after end date"
+            detail="End date cannot be before start date"
         )
 
-    # Validate leave type
-    leave_type = data.leave_type.lower()
-
-    if leave_type not in [
-        "paid",
-        "sick",
-        "unpaid"
-    ]:
-        raise HTTPException(
-            status_code=400,
-            detail="Leave type must be Paid, Sick, or Unpaid"
-        )
-
-    # Create leave request
-    leave = Leave(
-        employee_id=data.employee_id,
-        leave_type=leave_type,
-        start_date=data.start_date,
-        end_date=data.end_date,
-        remarks=data.remarks,
+    leave = LeaveRequest(
+        employee_id=leave_data.employee_id,
+        leave_type=leave_data.leave_type,
+        start_date=leave_data.start_date,
+        end_date=leave_data.end_date,
+        remarks=leave_data.remarks,
         status="pending"
     )
 
@@ -78,67 +62,23 @@ def apply_leave(
     db.commit()
     db.refresh(leave)
 
-    return {
-        "message": "Leave request submitted",
-        "leave_id": leave.id,
-        "status": leave.status
-    }
+    return leave
 
 
 @router.get("/")
 def get_all_leaves(
     db: Session = Depends(get_db)
 ):
-    return db.query(Leave).order_by(
-        Leave.start_date.desc()
-    ).all()
+    return db.query(LeaveRequest).all()
 
 
-@router.get("/employee/{employee_id}")
-def get_employee_leaves(
-    employee_id: int,
-    db: Session = Depends(get_db)
-):
-    # Check employee exists
-    employee = db.query(Employee).filter(
-        Employee.id == employee_id
-    ).first()
-
-    if not employee:
-        raise HTTPException(
-            status_code=404,
-            detail="Employee not found"
-        )
-
-    return db.query(Leave).filter(
-        Leave.employee_id == employee_id
-    ).order_by(
-        Leave.start_date.desc()
-    ).all()
-
-
-@router.put("/{leave_id}/decision")
-def decide_leave(
+@router.get("/{leave_id}")
+def get_leave(
     leave_id: int,
-    data: LeaveDecision,
     db: Session = Depends(get_db)
 ):
-    # Convert input to lowercase
-    decision = data.status.lower()
-
-    # Validate decision
-    if decision not in [
-        "approved",
-        "rejected"
-    ]:
-        raise HTTPException(
-            status_code=400,
-            detail="Status must be Approved or Rejected"
-        )
-
-    # Find leave request
-    leave = db.query(Leave).filter(
-        Leave.id == leave_id
+    leave = db.query(LeaveRequest).filter(
+        LeaveRequest.id == leave_id
     ).first()
 
     if not leave:
@@ -147,23 +87,76 @@ def decide_leave(
             detail="Leave request not found"
         )
 
-    # Check current status
-    if leave.status != "pending":
+    return leave
+
+
+@router.get("/employee/{employee_id}")
+def get_employee_leaves(
+    employee_id: int,
+    db: Session = Depends(get_db)
+):
+    return db.query(LeaveRequest).filter(
+        LeaveRequest.employee_id == employee_id
+    ).all()
+
+
+@router.put("/{leave_id}/status")
+def update_leave_status(
+    leave_id: int,
+    status_data: LeaveStatusUpdate,
+    db: Session = Depends(get_db)
+):
+    leave = db.query(LeaveRequest).filter(
+        LeaveRequest.id == leave_id
+    ).first()
+
+    if not leave:
         raise HTTPException(
-            status_code=400,
-            detail="This leave request has already been decided"
+            status_code=404,
+            detail="Leave request not found"
         )
 
-    # Update leave
-    leave.status = decision
-    leave.admin_comment = data.admin_comment
+    allowed_statuses = [
+        "pending",
+        "approved",
+        "rejected",
+        "cancelled"
+    ]
+
+    if status_data.status not in allowed_statuses:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid leave status"
+        )
+
+    leave.status = status_data.status
+    leave.admin_comment = status_data.admin_comment
+    leave.approved_by = status_data.approved_by
 
     db.commit()
     db.refresh(leave)
 
+    return leave
+
+
+@router.delete("/{leave_id}")
+def delete_leave(
+    leave_id: int,
+    db: Session = Depends(get_db)
+):
+    leave = db.query(LeaveRequest).filter(
+        LeaveRequest.id == leave_id
+    ).first()
+
+    if not leave:
+        raise HTTPException(
+            status_code=404,
+            detail="Leave request not found"
+        )
+
+    db.delete(leave)
+    db.commit()
+
     return {
-        "message": f"Leave {decision}",
-        "leave_id": leave.id,
-        "status": leave.status,
-        "admin_comment": leave.admin_comment
+        "message": "Leave request deleted successfully"
     }

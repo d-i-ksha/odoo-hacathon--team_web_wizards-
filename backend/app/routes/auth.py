@@ -1,14 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from ..database.connection import get_db
-from ..database.models import User, Employee
-from ..schemas.auth import SignupRequest, LoginRequest
-from ..services.auth_service import (
-    hash_password,
-    verify_password,
-    create_access_token
-)
+from ..database.models import User
 
 
 router = APIRouter(
@@ -17,9 +12,21 @@ router = APIRouter(
 )
 
 
-@router.post("/signup")
-def signup(
-    data: SignupRequest,
+class RegisterRequest(BaseModel):
+    employee_id: int | None = None
+    email: str
+    password: str
+    role: str = "employee"
+
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+
+@router.post("/register")
+def register(
+    data: RegisterRequest,
     db: Session = Depends(get_db)
 ):
     existing_user = db.query(User).filter(
@@ -32,39 +39,23 @@ def signup(
             detail="Email already registered"
         )
 
-    existing_employee = db.query(Employee).filter(
-        Employee.employee_code == data.employee_code
-    ).first()
-
-    if existing_employee:
-        raise HTTPException(
-            status_code=400,
-            detail="Employee ID already exists"
-        )
-
-    employee = Employee(
-        employee_code=data.employee_code,
-        name=data.name,
-        email=data.email
-    )
-
-    db.add(employee)
-    db.commit()
-    db.refresh(employee)
-
     user = User(
+        employee_id=data.employee_id,
         email=data.email,
-        password=hash_password(data.password),
+        password_hash=data.password,
         role=data.role,
-        employee_id=employee.id
+        email_verified=False
     )
 
     db.add(user)
     db.commit()
+    db.refresh(user)
 
     return {
-        "message": "Account created successfully",
-        "employee_id": employee.id
+        "message": "User registered successfully",
+        "user_id": user.id,
+        "email": user.email,
+        "role": user.role
     }
 
 
@@ -83,22 +74,16 @@ def login(
             detail="Invalid email or password"
         )
 
-    if not verify_password(
-        data.password,
-        user.password
-    ):
+    if user.password_hash != data.password:
         raise HTTPException(
             status_code=401,
             detail="Invalid email or password"
         )
 
-    token = create_access_token(
-        user.id,
-        user.role
-    )
-
     return {
-        "access_token": token,
-        "token_type": "bearer",
+        "message": "Login successful",
+        "user_id": user.id,
+        "employee_id": user.employee_id,
+        "email": user.email,
         "role": user.role
     }

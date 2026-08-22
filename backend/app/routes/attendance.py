@@ -1,6 +1,7 @@
-from datetime import date, datetime
+from datetime import date, time
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from ..database.connection import get_db
@@ -13,13 +14,29 @@ router = APIRouter(
 )
 
 
-@router.post("/check-in/{employee_id}")
-def check_in(
-    employee_id: int,
+class AttendanceCreate(BaseModel):
+    employee_id: int
+    attendance_date: date
+    check_in: time | None = None
+    check_out: time | None = None
+    status: str = "present"
+
+
+class CheckInRequest(BaseModel):
+    employee_id: int
+
+
+class CheckOutRequest(BaseModel):
+    employee_id: int
+
+
+@router.post("/")
+def create_attendance(
+    attendance_data: AttendanceCreate,
     db: Session = Depends(get_db)
 ):
     employee = db.query(Employee).filter(
-        Employee.id == employee_id
+        Employee.id == attendance_data.employee_id
     ).first()
 
     if not employee:
@@ -28,77 +45,26 @@ def check_in(
             detail="Employee not found"
         )
 
-    today = date.today()
+    attendance = Attendance(
+        employee_id=attendance_data.employee_id,
+        attendance_date=attendance_data.attendance_date,
+        check_in=attendance_data.check_in,
+        check_out=attendance_data.check_out,
+        status=attendance_data.status
+    )
 
-    record = db.query(Attendance).filter(
-        Attendance.employee_id == employee_id,
-        Attendance.date == today
-    ).first()
-
-    if record and record.check_in:
-        raise HTTPException(
-            status_code=400,
-            detail="Already checked in today"
-        )
-
-    if not record:
-        record = Attendance(
-            employee_id=employee_id,
-            date=today,
-            check_in=datetime.now().time(),
-            status="Present"
-        )
-        db.add(record)
-    else:
-        record.check_in = datetime.now().time()
-
+    db.add(attendance)
     db.commit()
-    db.refresh(record)
+    db.refresh(attendance)
 
-    return {
-        "message": "Check-in successful",
-        "employee_id": employee_id,
-        "date": record.date,
-        "check_in": record.check_in,
-        "status": record.status
-    }
+    return attendance
 
 
-@router.post("/check-out/{employee_id}")
-def check_out(
-    employee_id: int,
+@router.get("/")
+def get_all_attendance(
     db: Session = Depends(get_db)
 ):
-    today = date.today()
-
-    record = db.query(Attendance).filter(
-        Attendance.employee_id == employee_id,
-        Attendance.date == today
-    ).first()
-
-    if not record:
-        raise HTTPException(
-            status_code=404,
-            detail="No check-in record found for today"
-        )
-
-    if record.check_out:
-        raise HTTPException(
-            status_code=400,
-            detail="Already checked out today"
-        )
-
-    record.check_out = datetime.now().time()
-
-    db.commit()
-    db.refresh(record)
-
-    return {
-        "message": "Check-out successful",
-        "employee_id": employee_id,
-        "date": record.date,
-        "check_out": record.check_out
-    }
+    return db.query(Attendance).all()
 
 
 @router.get("/employee/{employee_id}")
@@ -118,15 +84,86 @@ def get_employee_attendance(
 
     return db.query(Attendance).filter(
         Attendance.employee_id == employee_id
-    ).order_by(
-        Attendance.date.desc()
     ).all()
 
 
-@router.get("/")
-def get_all_attendance(
+@router.post("/check-in")
+def check_in(
+    request: CheckInRequest,
     db: Session = Depends(get_db)
 ):
-    return db.query(Attendance).order_by(
-        Attendance.date.desc()
-    ).all()
+    employee = db.query(Employee).filter(
+        Employee.id == request.employee_id
+    ).first()
+
+    if not employee:
+        raise HTTPException(
+            status_code=404,
+            detail="Employee not found"
+        )
+
+    today = date.today()
+
+    existing = db.query(Attendance).filter(
+        Attendance.employee_id == request.employee_id,
+        Attendance.attendance_date == today
+    ).first()
+
+    if existing:
+        raise HTTPException(
+            status_code=400,
+            detail="Attendance already marked today"
+        )
+
+    current_time = time(
+        hour=__import__("datetime").datetime.now().hour,
+        minute=__import__("datetime").datetime.now().minute,
+        second=__import__("datetime").datetime.now().second
+    )
+
+    attendance = Attendance(
+        employee_id=request.employee_id,
+        attendance_date=today,
+        check_in=current_time,
+        status="present"
+    )
+
+    db.add(attendance)
+    db.commit()
+    db.refresh(attendance)
+
+    return attendance
+
+
+@router.post("/check-out")
+def check_out(
+    request: CheckOutRequest,
+    db: Session = Depends(get_db)
+):
+    today = date.today()
+
+    attendance = db.query(Attendance).filter(
+        Attendance.employee_id == request.employee_id,
+        Attendance.attendance_date == today
+    ).first()
+
+    if not attendance:
+        raise HTTPException(
+            status_code=404,
+            detail="No attendance record found for today"
+        )
+
+    if attendance.check_out:
+        raise HTTPException(
+            status_code=400,
+            detail="Already checked out"
+        )
+
+    from datetime import datetime
+
+    attendance.check_out = datetime.now().time()
+
+    db.commit()
+    db.refresh(attendance)
+
+    return attendance
