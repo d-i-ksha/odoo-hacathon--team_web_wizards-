@@ -33,6 +33,7 @@ def apply_leave(
     data: LeaveRequest,
     db: Session = Depends(get_db)
 ):
+    # Check employee exists
     employee = db.query(Employee).filter(
         Employee.id == data.employee_id
     ).first()
@@ -43,29 +44,34 @@ def apply_leave(
             detail="Employee not found"
         )
 
+    # Validate dates
     if data.start_date > data.end_date:
         raise HTTPException(
             status_code=400,
             detail="Start date cannot be after end date"
         )
 
-    if data.leave_type not in [
-        "Paid",
-        "Sick",
-        "Unpaid"
+    # Validate leave type
+    leave_type = data.leave_type.lower()
+
+    if leave_type not in [
+        "paid",
+        "sick",
+        "unpaid"
     ]:
         raise HTTPException(
             status_code=400,
             detail="Leave type must be Paid, Sick, or Unpaid"
         )
 
+    # Create leave request
     leave = Leave(
         employee_id=data.employee_id,
-        leave_type=data.leave_type,
+        leave_type=leave_type,
         start_date=data.start_date,
         end_date=data.end_date,
         remarks=data.remarks,
-        status="Pending"
+        status="pending"
     )
 
     db.add(leave)
@@ -93,6 +99,7 @@ def get_employee_leaves(
     employee_id: int,
     db: Session = Depends(get_db)
 ):
+    # Check employee exists
     employee = db.query(Employee).filter(
         Employee.id == employee_id
     ).first()
@@ -116,15 +123,20 @@ def decide_leave(
     data: LeaveDecision,
     db: Session = Depends(get_db)
 ):
-    if data.status not in [
-        "Approved",
-        "Rejected"
+    # Convert input to lowercase
+    decision = data.status.lower()
+
+    # Validate decision
+    if decision not in [
+        "approved",
+        "rejected"
     ]:
         raise HTTPException(
             status_code=400,
             detail="Status must be Approved or Rejected"
         )
 
+    # Find leave request
     leave = db.query(Leave).filter(
         Leave.id == leave_id
     ).first()
@@ -135,20 +147,22 @@ def decide_leave(
             detail="Leave request not found"
         )
 
-    if leave.status != "Pending":
+    # Check current status
+    if leave.status != "pending":
         raise HTTPException(
             status_code=400,
             detail="This leave request has already been decided"
         )
 
-    leave.status = data.status
+    # Update leave
+    leave.status = decision
     leave.admin_comment = data.admin_comment
 
     db.commit()
     db.refresh(leave)
 
     return {
-        "message": f"Leave {data.status.lower()}",
+        "message": f"Leave {decision}",
         "leave_id": leave.id,
         "status": leave.status,
         "admin_comment": leave.admin_comment
