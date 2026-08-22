@@ -522,3 +522,157 @@ a {
     font-size: 28px;
   }
 }
+
+/* =========================================================
+   SIGNUP PAGE - FINAL LAYOUT
+   ========================================================= */
+
+.signup-card {
+  width: min(100%, 560px) !important;
+  max-width: 560px !important;
+  padding: 32px !important;
+}
+
+/* Keep logo small and centered */
+.auth-logo-image {
+  display: block;
+  width: 72px !important;
+  height: 72px !important;
+  max-width: 72px !important;
+  max-height: 72px !important;
+  object-fit: cover;
+  border-radius: 18px;
+  margin: 0 auto;
+  box-shadow: 0 10px 25px rgba(79, 46, 160, 0.22);
+}
+
+/* Signup form spacing */
+.signup-card .form-group {
+  margin-bottom: 16px;
+}
+
+.signup-card .form-group label {
+  display: block;
+  margin-bottom: 7px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* Make inputs consistent */
+.signup-card .input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.signup-card .input-wrapper input {
+  width: 100%;
+  height: 44px;
+  padding: 0 42px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  color: var(--text-primary);
+  outline: none;
+}
+
+.signup-card .input-wrapper input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(109, 63, 192, 0.1);
+}
+
+.signup-card .input-wrapper > svg {
+  position: absolute;
+  left: 13px;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+/* Password eye */
+.signup-card .password-toggle {
+  position: absolute;
+  right: 8px;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+}
+
+/* Logo upload */
+.signup-card .logo-upload {
+  width: 100%;
+  height: 110px;
+  border: 1.5px dashed #cfd4df;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--text-secondary);
+  background: #fafaff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.signup-card .logo-upload:hover {
+  border-color: var(--primary);
+  background: var(--primary-light);
+  color: var(--primary);
+}
+
+.signup-card .logo-upload img {
+  width: 72px;
+  height: 72px;
+  object-fit: cover;
+  border-radius: 16px;
+}
+
+/* Signup button */
+.signup-card .auth-button {
+  width: 100%;
+  height: 46px;
+  margin-top: 4px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--primary);
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.signup-card .auth-button:hover {
+  background: var(--primary-dark);
+  transform: translateY(-1px);
+}
+
+/* Login link */
+.auth-switch {
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.auth-switch a {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.auth-switch a:hover {
+  color: var(--primary-dark);
+}
+
+/* Signup responsive */
+@media (max-width: 600px) {
+  .signup-card {
+    width: 100% !important;
+    padding: 24px 20px !important;
+  }
+
+  .auth-page {
+    padding: 24px 16px;
+  }
+}
