@@ -16,7 +16,7 @@ export async function apiRequest(endpoint, options = {}) {
   }
 
   return data;
-}
+};
 
 // =========================
 // AUTHENTICATION
@@ -75,3 +75,6 @@ export async function getPayroll() {
 // REPORTS
 // =========================
 
+export async function getReports() {
+  return apiRequest("/reports");
+}

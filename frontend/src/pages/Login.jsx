@@ -1,9 +1,9 @@
 import { Link, useNavigate } from "react-router-dom";
-import { login } from "../services/api";
-import { saveUser } from "../utils/helpers";
 import { Eye, EyeOff, LockKeyhole, Mail } from "lucide-react";
 import { useState } from "react";
 import logo from "../assets/logo.png";
+import { login } from "../services/api";
+import { saveUser } from "../utils/helpers";
 
 function Login() {
   const navigate = useNavigate();
@@ -30,32 +30,36 @@ function Login() {
   };
 
   const handleSubmit = async (event) => {
-  event.preventDefault();
+    event.preventDefault();
 
-  setError("");
-  setLoading(true);
+    setError("");
+    setLoading(true);
 
-  try {
-    const data = await login(
-      formData.email,
-      formData.password
-    );
+    try {
+      const data = await login(
+        formData.email,
+        formData.password
+      );
 
-    saveUser(data);
+      console.log("Login successful:", data);
 
-    if (data.role === "admin") {
-      navigate("/admin");
-    } else {
-      navigate("/employee");
+      saveUser(data);
+
+      if (data.role === "admin") {
+        navigate("/admin");
+      } else {
+        navigate("/employee");
+      }
+    } catch (error) {
+      console.error("Login error:", error);
+
+      setError(
+        error.message || "Unable to connect to the server."
+      );
+    } finally {
+      setLoading(false);
     }
-  } catch (error) {
-    setError(
-      error.message || "Unable to connect to the server."
-    );
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   return (
     <main className="auth-page">
@@ -112,9 +116,13 @@ function Login() {
               <button
                 type="button"
                 className="password-toggle"
-                onClick={() => setShowPassword((previous) => !previous)}
+                onClick={() =>
+                  setShowPassword((previous) => !previous)
+                }
                 aria-label={
-                  showPassword ? "Hide password" : "Show password"
+                  showPassword
+                    ? "Hide password"
+                    : "Show password"
                 }
               >
                 {showPassword ? (
