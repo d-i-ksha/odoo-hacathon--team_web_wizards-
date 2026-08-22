@@ -1,20 +1,33 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
+import EmployeeDashboard from "./pages/employee/EmployeeDashboard";
+import Attendance from "./pages/employee/Attendance";
+import Leave from "./pages/employee/Leave";
+
 
 function App() {
   return (
     <BrowserRouter>
-      <div className="app">
-        <Routes>
-          <Route path="/" element={<Login />} />
-          <Route path="/signup" element={<Signup />} />
+      <Routes>
 
-          {/* Unknown routes go back to Login for now */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </div>
+        {/* Authentication */}
+        <Route path="/" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
+
+        {/* Employee */}
+        <Route
+          path="/employee"
+          element={<EmployeeDashboard />}
+        />
+        <Route
+  path="/employee/attendance"
+  element={<Attendance />}
+  />
+        <Route path="/employee/leave" element={<Leave />} />
+
+      </Routes>
     </BrowserRouter>
   );
 }
