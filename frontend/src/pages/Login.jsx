@@ -1,14 +1,22 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { login } from "../services/api";
+import { saveUser } from "../utils/helpers";
 import { Eye, EyeOff, LockKeyhole, Mail } from "lucide-react";
 import { useState } from "react";
 import logo from "../assets/logo.png";
 
 function Login() {
+  const navigate = useNavigate();
+
   const [showPassword, setShowPassword] = useState(false);
+
   const [formData, setFormData] = useState({
     email: "",
     password: "",
   });
+
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -17,24 +25,46 @@ function Login() {
       ...previous,
       [name]: value,
     }));
+
+    setError("");
   };
 
-  const handleSubmit = (event) => {
-    event.preventDefault();
+  const handleSubmit = async (event) => {
+  event.preventDefault();
 
-    // Backend authentication will be connected here later.
-    console.log("Login data:", formData);
-  };
+  setError("");
+  setLoading(true);
+
+  try {
+    const data = await login(
+      formData.email,
+      formData.password
+    );
+
+    saveUser(data);
+
+    if (data.role === "admin") {
+      navigate("/admin");
+    } else {
+      navigate("/employee");
+    }
+  } catch (error) {
+    setError(
+      error.message || "Unable to connect to the server."
+    );
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <main className="auth-page">
       <div className="auth-brand">
         <div className="auth-logo">
-            <img src={logo} alt="Dayflow logo" />
+          <img src={logo} alt="Dayflow logo" />
         </div>
 
         <h1>Dayflow</h1>
-
         <p>Human Resource Management System</p>
       </div>
 
@@ -96,8 +126,18 @@ function Login() {
             </div>
           </div>
 
-          <button type="submit" className="btn btn-primary auth-submit">
-            Sign In
+          {error && (
+            <p className="auth-error">
+              {error}
+            </p>
+          )}
+
+          <button
+            type="submit"
+            className="btn btn-primary auth-submit"
+            disabled={loading}
+          >
+            {loading ? "Signing In..." : "Sign In"}
           </button>
         </form>
 
