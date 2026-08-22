@@ -1,12 +1,21 @@
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+
+import Login from "./pages/Login";
+import Signup from "./pages/Signup";
+
 function App() {
   return (
-    <div className="app">
-      <h1>Dayflow</h1>
+    <BrowserRouter>
+      <div className="app">
+        <Routes>
+          <Route path="/" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
 
-      <p>Human Resource Management System</p>
-
-      <p>Frontend is working 🚀</p>
-    </div>
+          {/* Unknown routes go back to Login for now */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </div>
+    </BrowserRouter>
   );
 }
 
